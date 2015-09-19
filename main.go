@@ -1,9 +1,11 @@
 package main
 
 import (
+	"flag"
 	"log"
 
 	"github.com/howeyc/fsnotify"
+	"os"
 )
 
 func handle(ev *fsnotify.FileEvent) {
@@ -11,6 +13,12 @@ func handle(ev *fsnotify.FileEvent) {
 }
 
 func main() {
+	dir := flag.String("d", ".", "directory to watch")
+	flag.Parse()
+
+	args := os.Args[1:]
+	log.Println(args)
+
 	watcher, err := fsnotify.NewWatcher()
 	defer watcher.Close()
 
@@ -34,11 +42,11 @@ func main() {
 		}
 	}()
 
-	err = watcher.Watch("testDir")
+	log.Printf("Watching %s...", *dir)
+	err = watcher.Watch(*dir)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	<-done
-
 }
