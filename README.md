@@ -10,4 +10,9 @@ than kicker ever was!
 ## Installation
 `go get github.com/thiderman/watcher`
 
+## Usage
+```
+watcher [-d /path/to/watch (defaults to $PWD)] "command-to-repeat"
+```
+
 [kicker]: https://github.com/alloy/kicker
