@@ -2,15 +2,48 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"os/exec"
+	"path/filepath"
+	"strings"
 
 	"github.com/howeyc/fsnotify"
-	"os"
-	"path/filepath"
 )
 
 func handle(ev *fsnotify.FileEvent) {
-	log.Println("event:", ev)
+	commandline := strings.Fields(flag.Args()[0])
+	cmd := exec.Command(commandline[0], commandline[1:]...)
+
+	pipe, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Print("\033[H\033[2J") // Clear the screen
+	log.Println(fmt.Sprintf("Running %s...", commandline[0]))
+	if err = cmd.Start(); err != nil {
+		log.Fatal(err)
+	}
+
+	buff := make([]byte, 1024)
+
+	for {
+		n, err := pipe.Read(buff)
+		// Either if the pipe was empty or an EOF or other error was returned.
+		if n == 0 && err == nil || err != nil {
+			log.Println("Done.")
+			break
+		}
+
+		s := string(buff[:n])
+		fmt.Print(s)
+	}
+
+	if err = cmd.Wait(); err != nil {
+		log.Println("Exit")
+		log.Fatal(err)
+	}
 }
 
 func main() {
