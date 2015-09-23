@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
-	"path/filepath"
 	"strings"
 
 	"github.com/fatih/color"
@@ -36,8 +35,7 @@ func handle(ev *fsnotify.FileEvent) {
 			break
 		}
 
-		s := string(buff[:n])
-		fmt.Print(s)
+		fmt.Print(string(buff[:n]))
 	}
 
 	// Print red error message or green success message
@@ -56,11 +54,6 @@ func main() {
 
 	if flag.NArg() != 1 {
 		log.Fatal("One command line argument sting required.")
-	}
-
-	absdir, err := filepath.Abs(*dir)
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	watcher, err := fsnotify.NewWatcher()
@@ -86,7 +79,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("Watching %s...", absdir)
+	log.Printf("Watching %s...", *dir)
 	err = watcher.Watch(*dir)
 	if err != nil {
 		log.Fatal(err)
