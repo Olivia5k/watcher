@@ -17,13 +17,14 @@ func main() {
 	dir := flag.String("d", ".", "directory to watch")
 	flag.Parse()
 
+	if flag.NArg() != 1 {
+		log.Fatal("One command line argument sting required.")
+	}
+
 	absdir, err := filepath.Abs(*dir)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	args := os.Args[1:]
-	log.Println(args)
 
 	watcher, err := fsnotify.NewWatcher()
 	defer watcher.Close()
