@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/howeyc/fsnotify"
 )
 
@@ -32,7 +33,6 @@ func handle(ev *fsnotify.FileEvent) {
 		n, err := pipe.Read(buff)
 		// Either if the pipe was empty or an EOF or other error was returned.
 		if n == 0 && err == nil || err != nil {
-			log.Println("Done.")
 			break
 		}
 
@@ -40,8 +40,13 @@ func handle(ev *fsnotify.FileEvent) {
 		fmt.Print(s)
 	}
 
+	// Print red error message or green success message
 	if err = cmd.Wait(); err != nil {
-		log.Println(err)
+		red := color.New(color.FgRed, color.Bold).SprintfFunc()
+		log.Println(red(err.Error()))
+	} else {
+		green := color.New(color.FgGreen, color.Bold).SprintfFunc()
+		log.Println(green("Execution successful."))
 	}
 }
 
