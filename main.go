@@ -41,8 +41,7 @@ func handle(ev *fsnotify.FileEvent) {
 	}
 
 	if err = cmd.Wait(); err != nil {
-		log.Println("Exit")
-		log.Fatal(err)
+		log.Println(err)
 	}
 }
 
