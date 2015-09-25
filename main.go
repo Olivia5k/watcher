@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/fatih/color"
@@ -13,7 +14,21 @@ import (
 
 func handle(ev *fsnotify.FileEvent) {
 	commandline := strings.Fields(flag.Args()[0])
-	cmd := exec.Command(commandline[0], commandline[1:]...)
+	args := make([]string, len(commandline[1:]))
+
+	// Figure out if we should do file name interpolation on the arguments
+	for index, arg := range commandline[1:] {
+		var err error
+		if strings.Contains(arg, "%f") {
+			arg, err = filepath.Abs(strings.Replace(arg, "%f", ev.Name, -1))
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		args[index] = arg
+	}
+
+	cmd := exec.Command(commandline[0], args...)
 
 	pipe, err := cmd.StdoutPipe()
 	if err != nil {
