@@ -36,7 +36,12 @@ func handle(ev *fsnotify.FileEvent) {
 	}
 
 	fmt.Print("\033[H\033[2J") // Clear the screen
-	log.Println(fmt.Sprintf("Running %s...", commandline[0]))
+	// Print the command in nice colors
+	yellow := color.New(color.FgYellow, color.Bold).SprintfFunc()
+	magenta := color.New(color.FgMagenta, color.Bold).SprintfFunc()
+	out := fmt.Sprintf("Running %s %s...", yellow(commandline[0]), magenta(strings.Join(args, " ")))
+
+	log.Println(out)
 	if err = cmd.Start(); err != nil {
 		log.Fatal(err)
 	}
