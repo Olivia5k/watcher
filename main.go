@@ -12,11 +12,13 @@ import (
 	"github.com/howeyc/fsnotify"
 )
 
-func handle(ev *fsnotify.FileEvent) {
+// parseArguments ...
+func parseArguments(ev *fsnotify.FileEvent) (cmd string, args []string) {
 	commandline := strings.Fields(flag.Args()[0])
-	args := make([]string, len(commandline[1:]))
+	cmd = commandline[0]
+	args = make([]string, len(commandline[1:]))
 
-	// Figure out if we should do file name interpolation on the arguments
+	// Do file name interpolation on the arguments if %f is in them
 	for index, arg := range commandline[1:] {
 		var err error
 		if strings.Contains(arg, "%f") {
@@ -28,7 +30,12 @@ func handle(ev *fsnotify.FileEvent) {
 		args[index] = arg
 	}
 
-	cmd := exec.Command(commandline[0], args...)
+	return
+}
+
+func handle(ev *fsnotify.FileEvent) {
+	command, args := parseArguments(ev)
+	cmd := exec.Command(command, args...)
 
 	pipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -39,7 +46,7 @@ func handle(ev *fsnotify.FileEvent) {
 	// Print the command in nice colors
 	yellow := color.New(color.FgYellow, color.Bold).SprintfFunc()
 	magenta := color.New(color.FgMagenta, color.Bold).SprintfFunc()
-	out := fmt.Sprintf("Running %s %s...", yellow(commandline[0]), magenta(strings.Join(args, " ")))
+	out := fmt.Sprintf("Running %s %s...", yellow(command), magenta(strings.Join(args, " ")))
 
 	log.Println(out)
 	if err = cmd.Start(); err != nil {
