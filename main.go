@@ -59,8 +59,18 @@ func handle(ev *fsnotify.FileEvent) {
 	out := fmt.Sprintf("Running %s %s...", yellow(command), magenta(strings.Join(args, " ")))
 
 	log.Println(out)
-	if err = cmd.Start(); err != nil {
-		log.Fatal("Command failed to start: ", err)
+
+	// Repeatedly try to start the command.
+	// There are cases in which this would fail, and just looping seems to fix it.
+	// This is neither nice nor elegant, but hey, it works and if it can be kept
+	// simple then it should be.
+	for {
+		err = cmd.Start()
+		if err != nil {
+			log.Print("Command failed to start: ", err)
+		} else {
+			break
+		}
 	}
 
 	outchan := make(chan string)
