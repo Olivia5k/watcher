@@ -37,7 +37,7 @@ func parseArguments(ev *fsnotify.FileEvent) (cmd string, args []string) {
 }
 
 // handle executes an event
-func handle(ev *fsnotify.FileEvent, done chan bool) {
+func handle(ev *fsnotify.FileEvent, done chan bool, quiet bool) {
 	command, args := parseArguments(ev)
 	cmd := exec.Command(command, args...)
 
@@ -61,8 +61,10 @@ func handle(ev *fsnotify.FileEvent, done chan bool) {
 	green := color.New(color.FgGreen, color.Bold).SprintfFunc()
 
 	// Print the command in nice colors
-	out := fmt.Sprintf("Running %s %s...", yellow(command), magenta(strings.Join(args, " ")))
-	log.Println(out)
+	if quiet == false {
+		out := fmt.Sprintf("Running %s %s...", yellow(command), magenta(strings.Join(args, " ")))
+		log.Println(out)
+	}
 
 	// Repeatedly try to start the command.
 	// There are cases in which this would fail, and just looping seems to fix it.
@@ -104,7 +106,9 @@ func handle(ev *fsnotify.FileEvent, done chan bool) {
 	if err = cmd.Wait(); err != nil {
 		log.Println(red(err.Error()))
 	} else {
-		log.Println(green("Execution successful."))
+		if quiet == false {
+			log.Println(green("Execution successful."))
+		}
 	}
 
 	done <- true
@@ -129,6 +133,7 @@ func loopOutput(c chan string, done chan bool, pipe io.ReadCloser) {
 
 func main() {
 	dir := flag.String("d", ".", "directory to watch")
+	quiet := flag.Bool("q", false, "Supress start and stop surroundings")
 	flag.Parse()
 
 	if flag.NArg() != 1 {
@@ -155,7 +160,7 @@ func main() {
 				// no other action is already happening
 				if running == false {
 					running = true
-					go handle(ev, item)
+					go handle(ev, item, *quiet)
 				}
 
 			case <-item:
