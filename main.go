@@ -25,7 +25,7 @@ func parseArguments(ev *fsnotify.FileEvent) (cmd string, args []string) {
 		if strings.Contains(arg, "%f") {
 			arg, err = filepath.Abs(strings.Replace(arg, "%f", ev.Name, -1))
 			if err != nil {
-				log.Fatal(err)
+				log.Fatal("Could not get absolute path: ", err)
 			}
 		}
 		args[index] = arg
@@ -40,11 +40,11 @@ func handle(ev *fsnotify.FileEvent) {
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("stdout not gotten: ", err)
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("stderr not gotten: ", err)
 	}
 
 	// Clear the screen
@@ -60,7 +60,7 @@ func handle(ev *fsnotify.FileEvent) {
 
 	log.Println(out)
 	if err = cmd.Start(); err != nil {
-		log.Fatal(err)
+		log.Fatal("Command failed to start: ", err)
 	}
 
 	outchan := make(chan string)
@@ -119,7 +119,7 @@ func main() {
 	defer watcher.Close()
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Unable to create fsnotify watcher: ", err)
 	}
 
 	done := make(chan bool)
@@ -132,7 +132,7 @@ func main() {
 				handle(ev)
 
 			case err := <-watcher.Error:
-				log.Println("error:", err)
+				log.Println("watcher error: ", err)
 
 			}
 		}
@@ -141,7 +141,7 @@ func main() {
 	log.Printf("Watching %s...", *dir)
 	err = watcher.Watch(*dir)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Directory watching failed: ", err)
 	}
 
 	<-done
