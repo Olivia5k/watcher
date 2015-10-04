@@ -13,7 +13,9 @@ import (
 	"github.com/howeyc/fsnotify"
 )
 
-// parseArguments ...
+// parseArguments parses the command line flags and does interpolation
+// of special formatting strings, like %f for the file name of the
+// file that triggered the FileEvent.
 func parseArguments(ev *fsnotify.FileEvent) (cmd string, args []string) {
 	commandline := strings.Fields(flag.Args()[0])
 	cmd = commandline[0]
@@ -34,10 +36,12 @@ func parseArguments(ev *fsnotify.FileEvent) (cmd string, args []string) {
 	return
 }
 
+// handle executes an event
 func handle(ev *fsnotify.FileEvent, done chan bool) {
 	command, args := parseArguments(ev)
 	cmd := exec.Command(command, args...)
 
+	// Set up pipes
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		log.Fatal("stdout not gotten: ", err)
@@ -50,6 +54,7 @@ func handle(ev *fsnotify.FileEvent, done chan bool) {
 	// Clear the screen
 	fmt.Print("\033[H\033[2J")
 
+	// Generate the color functions
 	yellow := color.New(color.FgYellow, color.Bold).SprintfFunc()
 	magenta := color.New(color.FgMagenta, color.Bold).SprintfFunc()
 	red := color.New(color.FgRed, color.Bold).SprintfFunc()
@@ -57,7 +62,6 @@ func handle(ev *fsnotify.FileEvent, done chan bool) {
 
 	// Print the command in nice colors
 	out := fmt.Sprintf("Running %s %s...", yellow(command), magenta(strings.Join(args, " ")))
-
 	log.Println(out)
 
 	// Repeatedly try to start the command.
@@ -73,15 +77,18 @@ func handle(ev *fsnotify.FileEvent, done chan bool) {
 		}
 	}
 
+	// Set up channels and states for the pipe listening
 	outchan := make(chan string)
 	errchan := make(chan string)
 	outdonechan := make(chan bool)
 	errdonechan := make(chan bool)
 	outdone := false
 
+	// Trigger the pipes
 	go loopOutput(outchan, outdonechan, stdout)
 	go loopOutput(errchan, errdonechan, stderr)
 
+	// Handle pipe output and wait for them to drain completely.
 	for outdone == false {
 		select {
 		case msg := <-outchan:
@@ -103,6 +110,7 @@ func handle(ev *fsnotify.FileEvent, done chan bool) {
 	done <- true
 }
 
+// loopOutput takes a pipe and drains it until EOF.
 func loopOutput(c chan string, done chan bool, pipe io.ReadCloser) {
 	buf := make([]byte, 1024)
 
