@@ -34,7 +34,7 @@ func parseArguments(ev *fsnotify.FileEvent) (cmd string, args []string) {
 	return
 }
 
-func handle(ev *fsnotify.FileEvent) {
+func handle(ev *fsnotify.FileEvent, done chan bool) {
 	command, args := parseArguments(ev)
 	cmd := exec.Command(command, args...)
 
@@ -99,6 +99,8 @@ func handle(ev *fsnotify.FileEvent) {
 	} else {
 		log.Println(green("Execution successful."))
 	}
+
+	done <- true
 }
 
 func loopOutput(c chan string, done chan bool, pipe io.ReadCloser) {
@@ -133,13 +135,24 @@ func main() {
 	}
 
 	done := make(chan bool)
+	item := make(chan bool)
 
 	// Process events
 	go func() {
+		running := false
 		for {
 			select {
 			case ev := <-watcher.Event:
-				handle(ev)
+				// A watcher event arrived - act on it, but only if
+				// no other action is already happening
+				if running == false {
+					running = true
+					go handle(ev, item)
+				}
+
+			case <-item:
+				// The runner has returned! Let the others roam!
+				running = false
 
 			case err := <-watcher.Error:
 				log.Println("watcher error: ", err)
