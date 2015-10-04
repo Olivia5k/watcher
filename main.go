@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os/exec"
 	"path/filepath"
@@ -37,15 +38,24 @@ func handle(ev *fsnotify.FileEvent) {
 	command, args := parseArguments(ev)
 	cmd := exec.Command(command, args...)
 
-	pipe, err := cmd.StdoutPipe()
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Print("\033[H\033[2J") // Clear the screen
-	// Print the command in nice colors
+	// Clear the screen
+	fmt.Print("\033[H\033[2J")
+
 	yellow := color.New(color.FgYellow, color.Bold).SprintfFunc()
 	magenta := color.New(color.FgMagenta, color.Bold).SprintfFunc()
+	red := color.New(color.FgRed, color.Bold).SprintfFunc()
+	green := color.New(color.FgGreen, color.Bold).SprintfFunc()
+
+	// Print the command in nice colors
 	out := fmt.Sprintf("Running %s %s...", yellow(command), magenta(strings.Join(args, " ")))
 
 	log.Println(out)
@@ -53,25 +63,47 @@ func handle(ev *fsnotify.FileEvent) {
 		log.Fatal(err)
 	}
 
-	buff := make([]byte, 1024)
+	outchan := make(chan string)
+	errchan := make(chan string)
+	outdonechan := make(chan bool)
+	errdonechan := make(chan bool)
+	outdone := false
 
-	for {
-		n, err := pipe.Read(buff)
-		// Either if the pipe was empty or an EOF or other error was returned.
-		if n == 0 && err == nil || err != nil {
-			break
+	go loopOutput(outchan, outdonechan, stdout)
+	go loopOutput(errchan, errdonechan, stderr)
+
+	for outdone == false {
+		select {
+		case msg := <-outchan:
+			fmt.Print(msg)
+		case errmsg := <-errchan:
+			fmt.Print(red(errmsg))
+		case <-outdonechan:
+			outdone = true
 		}
-
-		fmt.Print(string(buff[:n]))
 	}
 
 	// Print red error message or green success message
 	if err = cmd.Wait(); err != nil {
-		red := color.New(color.FgRed, color.Bold).SprintfFunc()
 		log.Println(red(err.Error()))
 	} else {
-		green := color.New(color.FgGreen, color.Bold).SprintfFunc()
 		log.Println(green("Execution successful."))
+	}
+}
+
+func loopOutput(c chan string, done chan bool, pipe io.ReadCloser) {
+	buf := make([]byte, 1024)
+
+	for {
+		n, err := pipe.Read(buf)
+
+		// Either if the pipe was empty or an EOF or other error was returned.
+		if n == 0 && err == nil || err != nil {
+			done <- true
+			return
+		}
+
+		c <- string(buf[:n])
 	}
 }
 
